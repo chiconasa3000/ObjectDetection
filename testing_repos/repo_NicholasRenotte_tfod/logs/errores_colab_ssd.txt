@@ -1,0 +1,20 @@
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+multiprocess 0.70.12.2 requires dill>=0.3.4, but you have dill 0.3.1.1 which is incompatible.
+google-colab 1.0.0 requires requests~=2.23.0, but you have requests 2.26.0 which is incompatible.
+datascience 0.10.6 requires folium==0.2.1, but you have folium 0.8.3 which is incompatible.
+
+
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+albumentations 0.1.12 requires imgaug<0.2.7,>=0.2.5, but you have imgaug 0.2.9 which is incompatible.
+
+fiftyone
+
+google-colab 1.0.0 requires requests~=2.23.0, but you have requests 2.26.0 which is incompatible.
+datascience 0.10.6 requires folium==0.2.1, but you have folium 0.8.3 which is incompatible.
+
+ya no modleo preentrenado
+no label map
+no test train mv
+no verificacion
+no compilacion
+no wget

@@ -8,10 +8,10 @@
 # Disclaimer about SSD7:
 # As you will see below, training SSD7 on the aforementioned datasets yields alright results, but I'd like to emphasize that SSD7 is not a carefully optimized network architecture. The idea was just to build a low-complexity network that is fast (roughly 127 FPS or more than 3 times as fast as SSD300 on a GTX 1070) for testing purposes. Would slightly different anchor box scaling factors or a slightly different number of filters in individual convolution layers make SSD7 significantly better at similar complexity? I don't know, I haven't tried.
 
-# In[ ]:
+# In[1]:
 
 
-from keras.optimizers import Adam
+from keras.optimizers import adam_v2
 from keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, TerminateOnNaN, CSVLogger
 from keras import backend as K
 from keras.models import load_model
@@ -116,7 +116,7 @@ model = build_model(image_size=(img_height, img_width, img_channels),
 
 # 3: Instantiate an Adam optimizer and the SSD loss function and compile the model
 
-adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+adam = adam_v2.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
 
 ssd_loss = SSDLoss(neg_pos_ratio=3, alpha=1.0)
 
@@ -131,20 +131,16 @@ model.compile(optimizer=adam, loss=ssd_loss.compute_loss)
 # 
 # This next code cell assumes that you want to load a model that was created in 'training' mode. If you want to load a model that was created in 'inference' or 'inference_fast' mode, you'll have to add the `DecodeDetections` or `DecodeDetectionsFast` layer type to the `custom_objects` dictionary below.
 
-# In[ ]:
-
-
-# TODO: Set the path to the `.h5` file of the model to be loaded.
-model_path = 'ssd7.h5'
-
-# We need to create an SSDLoss object in order to pass that to the model loader.
-ssd_loss = SSDLoss(neg_pos_ratio=3, alpha=1.0)
-
-K.clear_session() # Clear previous models from memory.
-
-model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
-                                               'compute_loss': ssd_loss.compute_loss})
-
+# # TODO: Set the path to the `.h5` file of the model to be loaded.
+# model_path = 'ssd7.h5'
+# 
+# # We need to create an SSDLoss object in order to pass that to the model loader.
+# ssd_loss = SSDLoss(neg_pos_ratio=3, alpha=1.0)
+# 
+# K.clear_session() # Clear previous models from memory.
+# 
+# model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
+#                                                'compute_loss': ssd_loss.compute_loss})
 
 # ## 3. Set up the data generators for the training
 # 
@@ -164,7 +160,7 @@ model = load_model(model_path, custom_objects={'AnchorBoxes': AnchorBoxes,
 # 
 # The example setup below was used to train SSD7 on two road traffic datasets released by [Udacity](https://github.com/udacity/self-driving-car/tree/master/annotations) with around 20,000 images in total and 5 object classes (car, truck, pedestrian, bicyclist, traffic light), although the vast majority of the objects are cars. The original datasets have a constant image size of 1200x1920 RGB. I consolidated the two datasets, removed a few bad samples (although there are probably many more), and resized the images to 300x480 RGB, i.e. to one sixteenth of the original image size. In case you'd like to train a model on the same dataset, you can download the consolidated and resized dataset I used [here](https://drive.google.com/open?id=1tfBFavijh4UTG4cGqIKwhcklLXUDuY0D) (about 900 MB).
 
-# In[5]:
+# In[4]:
 
 
 # 1: Instantiate two `DataGenerator` objects: One for training, one for validation.
@@ -179,11 +175,11 @@ val_dataset = DataGenerator(load_images_into_memory=False, hdf5_dataset_path=Non
 # TODO: Set the paths to your dataset here.
 
 # Images
-images_dir = '../../datasets/udacity_driving_datasets/'
+images_dir = '../datasets/udacity_driving_datasets/'
 
 # Ground truth
-train_labels_filename = '../../datasets/udacity_driving_datasets/labels_train.csv'
-val_labels_filename   = '../../datasets/udacity_driving_datasets/labels_val.csv'
+train_labels_filename = '../datasets/udacity_driving_datasets/labels_train.csv'
+val_labels_filename   = '../datasets/udacity_driving_datasets/labels_val.csv'
 
 train_dataset.parse_csv(images_dir=images_dir,
                         labels_filename=train_labels_filename,
@@ -218,12 +214,15 @@ print("Number of images in the training dataset:\t{:>6}".format(train_dataset_si
 print("Number of images in the validation dataset:\t{:>6}".format(val_dataset_size))
 
 
-# In[6]:
+# In[5]:
 
 
 # 3: Set the batch size.
+#batch_size = 16
+import os
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
-batch_size = 16
+batch_size = 8
 
 # 4: Define the image processing chain.
 
@@ -291,7 +290,7 @@ val_generator = val_dataset.generate(batch_size=batch_size,
 # 
 # I'll set a few Keras callbacks below, one for early stopping, one to reduce the learning rate if the training stagnates, one to save the best models during the training, and one to continuously stream the training history to a CSV file after every epoch. Logging to a CSV file makes sense, because if we didn't do that, in case the training terminates with an exception at some point or if the kernel of this Jupyter notebook dies for some reason or anything like that happens, we would lose the entire history for the trained epochs. Feel free to add more callbacks if you want TensorBoard summaries or whatever.
 
-# In[7]:
+# In[6]:
 
 
 # Define model callbacks.
@@ -303,7 +302,7 @@ model_checkpoint = ModelCheckpoint(filepath='ssd7_epoch-{epoch:02d}_loss-{loss:.
                                    save_best_only=True,
                                    save_weights_only=False,
                                    mode='auto',
-                                   period=1)
+                                   save_freq='epoch')
 
 csv_logger = CSVLogger(filename='ssd7_training_log.csv',
                        separator=',',
@@ -318,7 +317,7 @@ reduce_learning_rate = ReduceLROnPlateau(monitor='val_loss',
                                          factor=0.2,
                                          patience=8,
                                          verbose=1,
-                                         epsilon=0.001,
+                                         min_delta=0.001,
                                          cooldown=0,
                                          min_lr=0.00001)
 
@@ -337,13 +336,13 @@ callbacks = [model_checkpoint,
 # 2. You should tell `fit_generator()` which epoch to start from, otherwise it will start with epoch 0 every time you resume the training. Set `initial_epoch` to be the next epoch of your training. Note that this parameter is zero-based, i.e. the first epoch is epoch 0. If you had trained for 10 epochs previously and now you'd want to resume the training from there, you'd set `initial_epoch = 10` (since epoch 10 is the eleventh epoch). Furthermore, set `final_epoch` to the last epoch you want to run. To stick with the previous example, if you had trained for 10 epochs previously and now you'd want to train for another 10 epochs, you'd set `initial_epoch = 10` and `final_epoch = 20`.
 # 3. Callbacks like `ModelCheckpoint` or `ReduceLROnPlateau` are stateful, so you might want ot save their state somehow if you want to pick up a training exactly where you left off.
 
-# In[ ]:
+# In[7]:
 
 
 # TODO: Set the epochs to train for.
 # If you're resuming a previous training, set `initial_epoch` and `final_epoch` accordingly.
 initial_epoch   = 0
-final_epoch     = 20
+final_epoch     = 30
 steps_per_epoch = 1000
 
 history = model.fit_generator(generator=train_generator,

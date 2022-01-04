@@ -303,7 +303,7 @@ model_checkpoint = ModelCheckpoint(filepath='ssd7_epoch-{epoch:02d}_loss-{loss:.
                                    save_best_only=True,
                                    save_weights_only=False,
                                    mode='auto',
-                                   period=1)
+                                   save_freq='epoch')
 
 csv_logger = CSVLogger(filename='ssd7_training_log.csv',
                        separator=',',

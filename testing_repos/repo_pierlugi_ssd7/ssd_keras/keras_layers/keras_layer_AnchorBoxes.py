@@ -247,7 +247,7 @@ class AnchorBoxes(Layer):
         # Create a tensor to contain the variances and append it to `boxes_tensor`. This tensor has the same shape
         # as `boxes_tensor` and simply contains the same 4 variance values for every position in the last axis.
         variances_tensor = np.zeros_like(boxes_tensor) # Has shape `(feature_map_height, feature_map_width, n_boxes, 4)`
-        variances_tensor += self.variances # Long live broadcasting
+        variances_tensor += self.variances # Long live broadcasting (awesome)
         # Now `boxes_tensor` becomes a tensor of shape `(feature_map_height, feature_map_width, n_boxes, 8)`
         boxes_tensor = np.concatenate((boxes_tensor, variances_tensor), axis=-1)
 
